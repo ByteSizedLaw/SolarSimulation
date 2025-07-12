@@ -1,0 +1,76 @@
+{
+  "Mercury": {
+    "basicInfo": "Mercury is the smallest planet in the Solar System and the closest to the Sun.",
+    "interestingFact": "Mercury has no atmosphere, which means there is no wind or weather."
+  },
+  "Venus": {
+    "basicInfo": "Venus is the second planet from the Sun and is known for its thick, toxic atmosphere.",
+    "interestingFact": "Venus rotates in the opposite direction to most planets."
+  },
+  "Earth": {
+    "basicInfo": "Earth is the third planet from the Sun and the only known planet to support life.",
+    "interestingFact": "Earth’s magnetic field protects it from harmful solar radiation.",
+    "moons": {
+      "Moon": {
+        "basicInfo": "The Moon is Earth's only natural satellite.",
+        "interestingFact": "The Moon’s far side is never visible from Earth due to tidal locking."
+      }
+    }
+  },
+  "Mars": {
+    "basicInfo": "Mars is the fourth planet from the Sun, known as the Red Planet.",
+    "interestingFact": "Mars has the largest volcano in the Solar System, Olympus Mons.",
+    "moons": {
+      "Phobos": {
+        "basicInfo": "Phobos is the larger and closer of Mars’ two moons.",
+        "interestingFact": "Phobos is doomed to crash into Mars in about 50 million years."
+      },
+      "Deimos": {
+        "basicInfo": "Deimos is the smaller and farther of Mars’ two moons.",
+        "interestingFact": "Deimos has a very low gravity, making it difficult to walk on."
+      }
+    }
+  },
+  "Jupiter": {
+    "basicInfo": "Jupiter is the largest planet in the Solar System, known for its Great Red Spot.",
+    "interestingFact": "Jupiter’s magnetic field is 20,000 times stronger than Earth’s.",
+    "moons": {
+      "Io": {
+        "basicInfo": "Io is the most volcanically active body in the Solar System.",
+        "interestingFact": "Io’s volcanoes are driven by tidal heating from Jupiter."
+      },
+      "Europa": {
+        "basicInfo": "Europa is an icy moon with a potential subsurface ocean.",
+        "interestingFact": "Europa’s ocean may contain more water than all of Earth’s oceans."
+      },
+      "Ganymede": {
+        "basicInfo": "Ganymede is the largest moon in the Solar System.",
+        "interestingFact": "Ganymede has its own magnetic field, unique among moons."
+      },
+      "Callisto": {
+        "basicInfo": "Callisto is a heavily cratered moon of Jupiter.",
+        "interestingFact": "Callisto’s surface is one of the oldest in the Solar System."
+      }
+    }
+  },
+  "Saturn": {
+    "basicInfo": "Saturn is the sixth planet from the Sun, famous for its extensive ring system.",
+    "interestingFact": "Saturn’s rings are made of ice and rock particles, some as big as mountains.",
+    "rings": {
+      "basicInfo": "Saturn's rings are a complex system of icy particles and debris.",
+      "interestingFact": "Saturn's rings are only about 10 meters thick in some areas, despite their vast width."
+    }
+  },
+  "Uranus": {
+    "basicInfo": "Uranus is the seventh planet from the Sun, known for its pale blue-green color.",
+    "interestingFact": "Uranus rotates on its side, with an axial tilt of about 98 degrees.",
+    "rings": {
+      "basicInfo": "Uranus has a faint system of rings, less prominent than Saturn's.",
+      "interestingFact": "Uranus' rings were discovered in 1977 during a stellar occultation."
+    }
+  },
+  "Neptune": {
+    "basicInfo": "Neptune is the eighth planet from the Sun, known for its deep blue color.",
+    "interestingFact": "Neptune has the strongest winds in the Solar System."
+  }
+}
