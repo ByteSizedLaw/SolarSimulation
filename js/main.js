@@ -11,10 +11,10 @@ camera.position.set(30, 30, 40); // Initial camera position
 controls.update();
 
 // Add lighting to illuminate planets, moons, and rings
-const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Soft ambient light with adjusted intensity
+const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Soft ambient light
 scene.add(ambientLight);
-const sunLight = new THREE.PointLight(0xffff99, 1.5, 1000); // Increased intensity for better ring illumination
-sunLight.position.set(0, 0, 0); // Ensure light is at the sun's position
+const sunLight = new THREE.PointLight(0xffff99, 1.5, 1000); // Bright light for rings
+sunLight.position.set(0, 0, 0);
 scene.add(sunLight);
 
 // Create sun as a central, glowing object
@@ -123,7 +123,39 @@ const planetsData = [
   }
 ];
 
-// Create planets, moons, and rings, adding them to the scene
+// Function to create orbit path as a line
+function createOrbitPath(radius, segments = 64, color = 0x888888) {
+  const points = [];
+  for (let i = 0; i <= segments; i++) {
+    const theta = (i / segments) * Math.PI * 2;
+    points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
+  }
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineBasicMaterial({ color: color, opacity: 0.3, transparent: true });
+  return new THREE.Line(geometry, material);
+}
+
+// Function to create text sprite for planet and moon names
+function createTextSprite(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  context.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.font = '24px Arial';
+  context.fillStyle = 'white';
+  context.textAlign = 'center';
+  context.fillText(text, canvas.width / 2, canvas.height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(2, 0.5, 1); // Adjust size of the text sprite
+  sprite.raycast = () => {}; // Disable raycasting for labels
+  return sprite;
+}
+
+// Create planets, moons, rings, orbital paths, and labels
 const planets = [];
 planetsData.forEach(planetData => {
   // Create planet mesh
@@ -138,12 +170,27 @@ planetsData.forEach(planetData => {
     orbitSpeed: planetData.orbitSpeed,
     angle: 0,
     moons: [],
-    rings: null
+    rings: null,
+    orbitPath: null,
+    label: null
   };
+
+  // Create orbital path for planet
+  const planetOrbitPath = createOrbitPath(planetData.orbitRadius);
+  planetOrbitPath.raycast = () => {}; // Disable raycasting for orbit path
+  planet.userData.orbitPath = planetOrbitPath;
+  scene.add(planetOrbitPath);
+
+  // Create text label for planet
+  const planetLabel = createTextSprite(planetData.name);
+  planetLabel.position.y = planetData.radius + 0.5; // Position above planet
+  planet.userData.label = planetLabel;
+  planet.add(planetLabel); // Attach label to planet so it moves with it
+
   scene.add(planet);
   planets.push(planet);
 
-  // Create moons for the planet
+  // Create moons and their orbital paths and labels
   planetData.moons.forEach(moonData => {
     const moonGeometry = new THREE.SphereGeometry(moonData.radius, 32, 32);
     const moonMaterial = new THREE.MeshStandardMaterial({
@@ -155,9 +202,24 @@ planetsData.forEach(planetData => {
       orbitRadius: moonData.orbitRadius,
       orbitSpeed: moonData.orbitSpeed,
       angle: 0,
-      parentPlanet: planet
+      parentPlanet: planet,
+      orbitPath: null,
+      label: null
     };
-    scene.add(moon);
+
+    // Create orbital path for moon
+    const moonOrbitPath = createOrbitPath(moonData.orbitRadius, 64, 0x666666);
+    moonOrbitPath.raycast = () => {}; // Disable raycasting for orbit path
+    moon.userData.orbitPath = moonOrbitPath;
+    planet.add(moonOrbitPath); // Attach moon's orbit path to planet
+
+    // Create text label for moon
+    const moonLabel = createTextSprite(moonData.name);
+    moonLabel.position.y = moonData.radius + 0.3; // Position above moon
+    moon.userData.label = moonLabel;
+    moon.add(moonLabel); // Attach label to moon so it moves with it
+
+    planet.add(moon); // Attach moon to planet
     planet.userData.moons.push(moon);
   });
 
@@ -172,58 +234,109 @@ planetsData.forEach(planetData => {
       Math.PI * 2
     );
     const ringTexture = new THREE.TextureLoader().load(planetData.rings.texture, () => {
-      console.log(`Loaded ring texture for ${planetData.name}: ${planetData.rings.texture}`);
+      ////console.log(`Loaded ring texture for ${planetData.name}: ${planetData.rings.texture}`);
     }, undefined, (err) => {
-      console.error(`Error loading ring texture for ${planetData.name}: ${err}`);
+      //console.error(`Error loading ring texture for ${planetData.name}: ${err}`);
     });
     const ringMaterial = new THREE.MeshStandardMaterial({
       map: ringTexture,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: planetData.name === "Uranus" ? 0.3 : 0.8, // Fainter rings for Uranus
-      alphaTest: 0.5 // Improve transparency rendering
+      opacity: planetData.name === "Uranus" ? 0.3 : 0.8,
+      alphaTest: 0.5
     });
     const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = Math.PI / 2; // Orient rings flat around planet
+    ring.rotation.x = Math.PI / 2;
     ring.name = `${planetData.name}-rings`;
+    ring.raycast = () => {}; // Disable raycasting for rings
     planet.userData.rings = ring;
     scene.add(ring);
-    console.log(`Added rings for ${planetData.name}`); // Debug to confirm ring creation
   }
 });
 
-// Set up raycaster for clicking planets and moons (rings are not clickable)
+// Set up raycaster for clicking planets and moons
 const raycaster = new THREE.Raycaster();
+raycaster.params.Mesh.threshold = 0.1; // Threshold for click detection
 const mouse = new THREE.Vector2();
 const clickableObjects = [...planets, ...planets.flatMap(p => p.userData.moons)];
 
 // Variable to track the currently followed planet (null means sun-centered)
 let followedPlanet = null;
+let mouseDownPos = new THREE.Vector2();
+let isDragging = false;
+
+// Handle mousedown to record mouse position
+function onMouseDown(event) {
+  mouseDownPos.set((event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1);
+  isDragging = false;
+}
+
+// Handle mousemove to detect dragging
+function onMouseMove(event) {
+  const currentPos = new THREE.Vector2(
+    (event.clientX / window.innerWidth) * 2 - 1,
+    -(event.clientY / window.innerHeight) * 2 + 1
+  );
+  if (mouseDownPos.distanceTo(currentPos) > 0.03) {
+    isDragging = true;
+    //console.log("Dragging detected");
+  }
+}
+
+// Handle mouseup to reset drag state
+function onMouseUp() {
+  isDragging = false;
+}
 
 // Handle click events to display information and toggle planet tracking
 function onMouseClick(event) {
+  if (isDragging) {
+    //console.log("Click ignored due to drag");
+    return; // Ignore clicks if dragging
+  }
+
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  //console.log(`Click at mouse coords: (${mouse.x.toFixed(3)}, ${mouse.y.toFixed(3)})`);
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(clickableObjects);
+  const intersects = raycaster.intersectObjects(clickableObjects, true);
   if (intersects.length > 0) {
     const object = intersects[0].object;
-    if (!object.userData.parentPlanet) { // Only planets, not moons
+    //console.log(`Clicked object: ${object.name} (${object.userData.parentPlanet ? 'Moon' : 'Planet'})`);
+
+    if (!object.userData.parentPlanet) { // Planet clicked
       if (followedPlanet === object) {
         // Clicking the followed planet: disengage and center on sun
         followedPlanet = null;
         controls.target.set(0, 0, 0); // Focus on sun (origin)
         controls.update();
+        //console.log("Returned to sun-centered view");
       } else {
         // Clicking a new planet: follow it
         followedPlanet = object;
         controls.target.copy(object.position); // Set control target to planet's position
         controls.update();
+        //console.log(`Now following planet: ${object.name}`);
+      }
+    } else {
+      // Moon clicked: maintain or set focus on parent planet
+      const parentPlanet = object.userData.parentPlanet;
+      if (parentPlanet) {
+        followedPlanet = parentPlanet;
+        controls.target.copy(parentPlanet.position); // Focus on parent planet
+        controls.update();
+        //console.log(`Following parent planet: ${parentPlanet.name} for moon ${object.name}`);
       }
     }
     displayObjectInfo(object);
+  } else {
+    //console.log("No object intersected", clickableObjects.map(obj => obj.name));
   }
 }
+
+document.addEventListener('mousedown', onMouseDown);
+document.addEventListener('mousemove', onMouseMove);
+document.addEventListener('mouseup', onMouseUp);
 document.addEventListener('click', onMouseClick);
 
 // Load planet and moon data from JSON file
@@ -246,8 +359,7 @@ function displayObjectInfo(object) {
   } else {
     // Handle planet click
     info = planetInfoData[object.name];
-    // Check if planet has rings and append ring info
-    if (info.rings) {
+    if (info && info.rings) {
       info = {
         ...info,
         basicInfo: `${info.basicInfo} It is known for its ring system.`,
@@ -263,6 +375,9 @@ function displayObjectInfo(object) {
       <p><strong>Interesting Fact:</strong> ${info.interestingFact}</p>
     `;
     infoPanel.style.display = 'block';
+    //console.log(`Displaying info for ${object.name}`);
+  } else {
+    //console.log(`No info available for ${object.name}`);
   }
 }
 
@@ -277,7 +392,7 @@ function setEarthRotation() {
 }
 setEarthRotation();
 
-// Animation loop to update planet, moon, and ring positions
+// Animation loop to update planet, moon, ring, and orbit path positions
 function animate() {
   requestAnimationFrame(animate);
   planets.forEach(planet => {
@@ -287,25 +402,40 @@ function animate() {
     planet.position.z = Math.sin(planet.userData.angle) * planet.userData.orbitRadius;
     planet.rotation.y += 0.01; // Planet rotation
 
-    // Update moon orbits
+    // Update moon orbits and their orbit paths
     planet.userData.moons.forEach(moon => {
       moon.userData.angle += moon.userData.orbitSpeed;
-      moon.position.x = planet.position.x + Math.cos(moon.userData.angle) * moon.userData.orbitRadius;
-      moon.position.z = planet.position.z + Math.sin(moon.userData.angle) * moon.userData.orbitRadius;
+      moon.position.x = Math.cos(moon.userData.angle) * moon.userData.orbitRadius;
+      moon.position.y = 0; // Ensure moon stays in plane
+      moon.position.z = Math.sin(moon.userData.angle) * moon.userData.orbitRadius;
       moon.rotation.y += 0.005; // Moon rotation
+
+      // Update moon's orbit path and label position
+      if (moon.userData.orbitPath) {
+        moon.userData.orbitPath.position.set(0, 0, 0); // Orbit path is local to planet
+      }
+      if (moon.userData.label) {
+        moon.userData.label.lookAt(camera.position); // Orient label towards camera
+      }
     });
 
     // Update ring position and rotation
     if (planet.userData.rings) {
       planet.userData.rings.position.copy(planet.position); // Align rings with planet
-      planet.userData.rings.rotation.y += 0.002; // Subtle ring rotation for visual effect
+      planet.userData.rings.rotation.y += 0.002; // Subtle ring rotation
+    }
+
+    // Update planet label orientation
+    if (planet.userData.label) {
+      planet.userData.label.lookAt(camera.position); // Orient label towards camera
     }
   });
 
   // Update camera to follow the selected planet
-  if (followedPlanet) {
+  if (followedPlanet && followedPlanet.geometry && followedPlanet.geometry.parameters && followedPlanet.geometry.parameters.radius) {
     controls.target.copy(followedPlanet.position); // Keep controls focused on planet
-    const offset = new THREE.Vector3(0, followedPlanet.geometry.parameters.radius * 2, followedPlanet.geometry.parameters.radius * 5);
+    const radius = followedPlanet.geometry.parameters.radius;
+    const offset = new THREE.Vector3(0, radius * 2, radius * 5);
     camera.position.copy(followedPlanet.position).add(offset); // Position camera relative to planet
   }
 
